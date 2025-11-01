@@ -2,19 +2,4 @@
 # https://github.com/riggraz/no-style-please#customize-the-menu
 
 entries:
-  - title: Hello there, 
-    entries:
-      - title: about 
-        url:  /about
-      - title: github
-        url: https://github.com/borngraced
-      - title: email
-        url: mailto:0@sami.cx
-
-  - title: all posts
-    post_list:
-      limit: 5
-      show_more: true
-      show_more_text: See archive...
-      show_more_url: archive.html
 
