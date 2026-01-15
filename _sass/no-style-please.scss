@@ -1,15 +1,55 @@
 // -------------- THEME SWITCHER -------------- //
 @mixin dark-appearance {
-  filter: invert(1);
-  img {
-    filter: invert(1);
+  background: #181616;
+  color: #c5c9c5;
 
-    &.ioda { filter: invert(0); }
+  a {
+    color: #8ba4b0;
+  }
+
+  code {
+    color: #e6c384;
+    background: #0d0d0d;
+  }
+
+  div.highlighter-rouge code {
+    color: #c5c9c5;
+    background: #181616;
+  }
+
+  .highlight {
+    background: #181616;
+    color: #c5c9c5;
+
+    .c, .c1, .cm, .cs { color: #625e5a; }
+    .k, .kc, .kd, .kn, .kp, .kr, .kt { color: #c4746e; }
+    .s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr { color: #8a9a7b; }
+    .n, .na, .nb, .nc, .nd, .ni, .ne, .nf, .nl, .nn, .no, .nt, .nv { color: #8ba4b0; }
+    .m, .mf, .mh, .mi, .mo, .il { color: #b6927b; }
+    .o, .ow { color: #c4746e; }
+    .p { color: #c5c9c5; }
+    .gi { color: #8a9a7b; }
+    .gd { color: #c4746e; }
+    .gh { color: #8ba4b0; }
+    .cp { color: #a292a3; }
+    .err { color: #e46876; }
+    .w { color: #c5c9c5; }
+  }
+
+  blockquote {
+    border-color: #625e5a;
+  }
+
+  table, th, td {
+    border-color: #625e5a;
+  }
+
+  *:target {
+    background: #2d4f67;
   }
 }
 
 body[a="dark"] { @include dark-appearance; }
-
 
 @media (prefers-color-scheme: dark) {
   body[a="auto"] { @include dark-appearance; }
@@ -20,6 +60,11 @@ body[a="dark"] { @include dark-appearance; }
 // block body's background propagation
 // see: https://stackoverflow.com/a/61265706
 html, body { background: white; }
+
+@media (prefers-color-scheme: dark) {
+  html[a="auto"], body[a="auto"] { background: #181616; }
+}
+html[a="dark"], body[a="dark"] { background: #181616; }
 
 html { height: 100%; }
 
@@ -68,8 +113,11 @@ table, th, td {
 }
 
 code {
-  color: white;
-  background: black;
+  color: #5e4a1f;
+  background: #f0ece2;
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+  font-size: 0.9em;
 }
 
 div.highlighter-rouge code {
@@ -77,6 +125,30 @@ div.highlighter-rouge code {
   overflow-x: auto;
   white-space: pre-wrap;
   padding: 1rem;
+  border-radius: 5px;
+  font-size: 1em;
+  color: #2a2a2a;
+  background: #f0ece2;
+}
+
+// Kanagawa Light syntax highlighting (light mode)
+.highlight {
+  background: #f0ece2;
+  color: #2a2a2a;
+
+  .c, .c1, .cm, .cs { color: #8a8a8a; font-style: italic; } // comments
+  .k, .kc, .kd, .kn, .kp, .kr, .kt { color: #9c4040; } // keywords
+  .s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr { color: #4a6b3a; } // strings
+  .n, .na, .nb, .nc, .nd, .ni, .ne, .nf, .nl, .nn, .no, .nt, .nv { color: #3a5a6b; } // names/functions
+  .m, .mf, .mh, .mi, .mo, .il { color: #8a6a3a; } // numbers
+  .o, .ow { color: #9c4040; } // operators
+  .p { color: #2a2a2a; } // punctuation
+  .gi { color: #4a6b3a; } // git inserted
+  .gd { color: #9c4040; } // git deleted
+  .gh { color: #3a5a6b; font-weight: bold; } // git header
+  .cp { color: #7a5a7a; } // preprocessor
+  .err { color: #c43a3a; } // error
+  .w { color: #2a2a2a; } // whitespace
 }
 
 blockquote {
@@ -91,4 +163,17 @@ img {
   max-width: 100%;
   display: block;
   margin: 0 auto;
+}
+
+// Horizontal menu
+header + ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  li {
+    margin: 0;
+  }
 }

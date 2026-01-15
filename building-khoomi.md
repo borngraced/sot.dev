@@ -1,6 +1,7 @@
 ---
-layout: page
+layout: post
 title: Building Khoomi
+date: 2026-01-07
 ---
 
 ## Why Khoomi?

@@ -2,3 +2,11 @@
 # https://github.com/riggraz/no-style-please#customize-the-menu
 
 entries:
+  - title: github
+    url: https://github.com/borngraced
+  - title: posts
+    url: archive.html
+  - title: projects
+    url: projects.html
+  - title: rss
+    url: feed.xml
