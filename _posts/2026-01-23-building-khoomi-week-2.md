@@ -8,7 +8,7 @@ category: khoomi
 
 Last week I documented [listing architecture](/building-khoomi-week-1.html). This week: the shops that own those listings.
 
-A shop is a seller's storefront—distinct from the user account that handles authentication. This separation lets the same person buy (via their user account) and sell (via their shop) while keeping concerns cleanly separated.
+On Khoomi, a shop is a seller's storefront—distinct from the user account that handles authentication. This separation lets the same person buy (via their user account) and sell (via their shop) while keeping concerns cleanly separated.
 
 ---
 
