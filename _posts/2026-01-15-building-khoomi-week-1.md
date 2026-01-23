@@ -203,6 +203,6 @@ Your marketplace might be different. That's the point.
 
 ---
 
-*Next week: How Khoomi's wallet system handles the gap between "customer paid" and "seller can withdraw."*
+*Next: [Week 2 - Shop Architecture](/building-khoomi-week-2.html)*
 
 —Samuel
