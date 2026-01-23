@@ -2,6 +2,7 @@
 layout: post
 title: "Building Khoomi - Week 2: Shop Architecture"
 description: "How shops work as separate entities from users, atomic creation transactions, embedded followers, and the decisions that make a marketplace seller experience."
+image: https://sot.dev/assets/images/boromir.webp
 date: 2026-01-23
 category: khoomi
 ---
