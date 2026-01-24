@@ -97,9 +97,13 @@ li { margin: 0.4rem 0; }
 *:target { background: yellow; }
 
 .w {
-  max-width: 640px;
+  max-width: 780px;
   margin: 0 auto;
   padding: 4rem 2rem;
+
+  @media (max-width: 600px) {
+    padding: 2rem 1rem;
+  }
 }
 
 hr {
@@ -132,7 +136,7 @@ div.highlighter-rouge code {
   white-space: pre-wrap;
   padding: 1rem;
   border-radius: 5px;
-  font-size: 1em;
+  font-size: 0.85em;
   color: #2a2a2a;
   background: #f0ece2;
 }
