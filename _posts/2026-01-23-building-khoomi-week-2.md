@@ -349,6 +349,6 @@ The shop architecture is stable. New features—analytics dashboards, promotiona
 
 ---
 
-*Next week: How orders work when a single checkout spans multiple sellers.*
+*Next: [Week 3 - Multi-Vendor Order Architecture](/building-khoomi-week-3.html)*
 
 —Samuel
