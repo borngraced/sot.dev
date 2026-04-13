@@ -8,8 +8,9 @@ date: 2026-04-13
 
 Recently while working in a codebase, I had a serious bug originating from a very small and minor misuse of arguments to a function which also led to my issue in [rust-clippy](https://github.com/rust-lang/rust-clippy/issues/16735). I was ranting about it on X too:
 
-<blockquote class="twitter-tweet"><p><a href="https://x.com/sotdev_/status/2034796732366667932">Tweet from @sotdev_</a></p></blockquote>
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+{::nomarkdown}
+<blockquote class="twitter-tweet"><a href="https://x.com/sotdev_/status/2034796732366667932"></a></blockquote>
+{:/nomarkdown}
 
 So I said why not write on why developers shouldn't stop at scalar types. Imagine a function takes a `string`, returns a `number`, and we call it "typed." But this is a shallow form of type safety, one that gives us a false sense of security while letting entire categories of bugs slip through unnoticed.
 
