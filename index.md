@@ -4,7 +4,7 @@ layout: home
 
 Hey! I'm Sami; I write Rust, Go, and sometimes C for fun. I like building tools and understanding how things work at a low level.
 
-Started out building digital publications at DDW, then transitioned to systems programming at Komodo working on DeFi backends. Now I'm contributing to rust-clippy and building [Khoomi](/building-khoomi), an African marketplace for handmade goods.
+Started out building digital publications at DDW, then transitioned to systems programming at Komodo working on DeFi backends. Now I'm contributing to [rust-clippy](https://github.com/rust-lang/rust-clippy/pulls?q=author%3Aborngraced+) and building [Khoomi](/building-khoomi), an African marketplace for handmade goods.
 
 ## Notable Contributions
 
