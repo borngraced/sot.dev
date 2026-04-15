@@ -299,16 +299,15 @@ impl ShopId {
 
 Once a `ShopId` exists in your system, you *know* it's valid. Every function that receives a `ShopId` can skip validation entirely. The constructor already did the work.
 
-In Go, you get method access for free since defined types inherit the method set of their underlying type:
+In Go, defined types start with an empty method set, but built-in operations like `len()` still work and you can add your own methods:
 
 ```go
 type ShopID string
 
-// String methods like len() work directly
 id := ShopID("shop_abc123")
-fmt.Println(len(id)) // works
+fmt.Println(len(id)) // works, len() is a built-in function
 
-// Add your own methods too
+// Add your own methods
 func (id ShopID) Validate() error {
     if id == "" {
         return errors.New("shop ID cannot be empty")
@@ -346,3 +345,8 @@ Scalar types describe what data *looks like*. A sequence of characters, a 64-bit
 The gap between these two is where bugs live. I learned that the hard way. Wrap your primitives. Make your types mean something. Let the compiler do the work that code review and testing never will.
 
 —Samuel
+
+---
+
+*Edits:*
+- *2026-04-15: Corrected Go section on defined types and method sets based on readers feedback.*
