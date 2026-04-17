@@ -4,6 +4,8 @@ layout: home
 
 Hey! I'm Sami; I write Rust, Go, and sometimes C for fun. I like building tools and understanding how things work at a low level.
 
+**Currently looking for Rust or Go roles (remote/relocation).** [Reach out](mailto:0@sot.dev)
+
 Started out building digital publications at DDW, then transitioned to systems programming at Komodo working on DeFi backends. Now I'm contributing to [rust-clippy](https://github.com/rust-lang/rust-clippy/pulls?q=author%3Aborngraced+) and building [Khoomi](/building-khoomi), an African marketplace for handmade goods.
 
 ## Notable Contributions
@@ -61,4 +63,5 @@ Worked on Komodo's DeFi core backend, building blockchain applications in Rust a
 
 - Email: [0@sot.dev](mailto:0@sot.dev)
 - GitHub: [@borngraced](https://github.com/borngraced)
+- X: [@sotdev_](https://x.com/sotdev_)
 - Location: Lagos, Nigeria
