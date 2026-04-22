@@ -348,5 +348,9 @@ The gap between these two is where bugs live. I learned that the hard way. Wrap 
 
 ---
 
+If you want a very different kind of type-and-layout experiment, I also wrote about building an [inode-style vector in Rust](/inode-style-vector-in-rust.html) and benchmarking where it loses to `Vec`.
+
+---
+
 *Edits:*
 - *2026-04-15: Corrected Go section on defined types and method sets based on readers feedback.*
