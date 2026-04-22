@@ -123,6 +123,31 @@ The broad result was not subtle.
 
 For normal vector-shaped workloads, `Vec` usually came first, `SmallVec` usually came second, and the paged structure usually came third. For cheap scalar types like `u32`, the gap was especially ugly. That was not surprising once I thought about it properly. A contiguous array is doing exactly what the CPU wants: predictable memory access, fewer pointer hops, fewer branches, fewer cache misses. My paged structure was paying for chunk math and chunk lookups just to reach data that `Vec` could reach by simple pointer arithmetic.
 
+### Focused `u32` Microbenchmarks
+
+To get a cleaner signal, I also split out the `u32` append-path microbenchmarks into [`benches/push_u32.rs`](https://github.com/borngraced/paged-small-vec/blob/master/benches/push_u32.rs). These run at `N = 4096` and only measure `push`, `push + pop`, and `extend_from_slice`.
+
+| Benchmark | Vec | SmallVec | PagedSmallVec<256> | PagedSmallVec<512> |
+| --- | ---: | ---: | ---: | ---: |
+| `push_only_micro/u32` | ~1.55 Gelem/s | ~1.09 Gelem/s | ~0.46 Gelem/s | ~0.47 Gelem/s |
+| `push_pop_micro/u32` | ~1.20 Gelem/s | ~0.85 Gelem/s | ~0.45 Gelem/s | ~0.46 Gelem/s |
+| `extend_micro/u32` | ~17.58 Gelem/s | ~14.96 Gelem/s | ~0.82 Gelem/s | ~0.86 Gelem/s |
+
+That table makes the trade-off very explicit. `Vec` still wins the normal append-shaped paths comfortably, `SmallVec` still does very well, and the paged layouts are only competitive with each other, not with the contiguous ones. But the chunk size result is useful: `512` edges out `256` for batch append, while both are basically in the same class for the single-element microbenches.
+
+### Memory Profile
+
+I also added a tiny memory probe at [`examples/memory_profile.rs`](https://github.com/borngraced/paged-small-vec/blob/master/examples/memory_profile.rs) and ran it on a one-shot build of 1,000,000 `u32` values. The stack footprint numbers come from `size_of::<...>()`, and the peak memory numbers come from `/usr/bin/time -l`.
+
+| Container | Stack footprint | Peak memory footprint |
+| --- | ---: | ---: |
+| `Vec<u32>` | 24 B | ~7.34 MB |
+| `SmallVec<[u32; 32]>` | 144 B | ~7.34 MB |
+| `PagedSmallVec<u32, 32, 4096, 256>` | 32,928 B | ~5.11 MB |
+| `PagedSmallVec<u32, 32, 4096, 512>` | 32,928 B | ~5.11 MB |
+
+That result is interesting for the exact reason the throughput tables are bad: the paged layout pays a much larger structural footprint up front, but in this one-shot build it also avoids some of the peak memory growth that comes from contiguous reallocation. So the design is not free, but the cost is not one-dimensional either. You pay for it in raw access speed and container size, and you sometimes get something back in growth behavior.
+
 ## Random Access Was Exactly As Bad As It Should Have Been
 
 The indexed access path looked like this:
