@@ -270,6 +270,20 @@ For `[u8; 64]`, larger chunks did not help nearly as much, and for some paths th
 
 So I settled on `256` as the default chunk size because the current container is still more push/pop-shaped than purely bulk-append-shaped.
 
+## Where This Can Actually Beat `Vec`
+
+The honest answer is: not in the generic "just use it like a normal vector" case. But there are real workloads where a chunked layout like this can outperform `Vec`, or at least make a much stronger trade.
+
+The first is append-heavy systems where growth to large sizes is common and the cost of repeated contiguous reallocation actually matters. Think large in-memory logs, event buffers, tracing pipelines, or ingestion queues that mostly grow, occasionally flush, and rarely do random indexing in the middle. In those systems, avoiding a full-buffer move during growth can be more important than having the absolute cheapest indexed load.
+
+The second is chunk-native processing. If your workload naturally operates in runs instead of individual elements, the layout starts to fit the problem much better. A good example is streaming analytics or batch transforms where you want to scan a buffer chunk by chunk, apply a transform, serialize a chunk, compress a chunk, or hand a chunk to another stage. That is exactly why `for_each_chunk` and chunk iterators ended up being much more natural APIs than trying to force everything through `get(i)`.
+
+The third is memory behavior under allocator pressure. `Vec` is excellent when it can keep getting larger contiguous regions cheaply, but that assumption gets weaker for very large or long-lived allocations. In fragmented heaps or systems with many growing buffers alive at once, allocating one more fixed-size chunk can be a better trade than asking the allocator for a much larger contiguous block and then copying everything into it.
+
+The fourth is reference and chunk stability. If a system wants to hold onto chunk-local slices, process pages independently, or hand off partially filled chunks between stages, this structure is much friendlier than a `Vec` that may relocate its entire backing buffer on growth. In other words, once the unit of work becomes "chunk" instead of "element", the design stops looking strange and starts looking deliberate.
+
+So I would not sell this as "better than `Vec`." I would sell it as "better than `Vec` for append-heavy, chunk-oriented workloads where contiguous reallocation is one of the real costs."
+
 ## The Real Lesson
 
 At this point I think the biggest mistake would be judging the structure only by how well it mimics `Vec`.
