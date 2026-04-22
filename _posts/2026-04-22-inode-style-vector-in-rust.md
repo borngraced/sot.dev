@@ -2,6 +2,7 @@
 layout: post
 title: "What Happens When You Build an Inode-Style Vector in Rust"
 description: "I built an inode-inspired paged array in Rust, benchmarked it against Vec and SmallVec, and found exactly where the idea falls apart."
+image: https://sot.dev/assets/images/inode-style-vector-in-rust.png
 date: 2026-04-22
 ---
 
