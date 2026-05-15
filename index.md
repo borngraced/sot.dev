@@ -18,19 +18,19 @@ I also built an LC-3 virtual machine in Rust to explore instruction decoding, me
 
 Built Rust and Go infrastructure for Komodo's DeFi backend, with a focus on browser-compatible blockchain support, wallet correctness, swap reliability, and runtime tooling.
 
-- Delivered browser support for ARRR/Zcash, including WASM compilation, async wallet sync, IndexedDB-backed block and wallet storage, transaction history, balance streaming, and gRPC-web transport. [#1957](https://github.com/GLEECBTC/komodo-defi-framework/pull/1957), [#1996](https://github.com/GLEECBTC/komodo-defi-framework/pull/1996)
-- Fixed shielded-wallet correctness issues around resumable sync, activation status, unconfirmed change outputs, and unconfirmed z-note tracking. [#2276](https://github.com/GLEECBTC/komodo-defi-framework/pull/2276), [#2331](https://github.com/GLEECBTC/komodo-defi-framework/pull/2331)
-- Built WalletConnect v2 support for EVM and Cosmos/Tendermint flows, including Rust Sign and Pairing APIs, WASM/native relay transport, multi-session persistence, coin activation, withdrawals, and swap signing. [WC #3](https://github.com/KomodoPlatform/WalletConnectRust/pull/3), [#2223](https://github.com/GLEECBTC/komodo-defi-framework/pull/2223)
-- Improved SPV/UTXO and swap reliability: block-header storage limits, IndexedDB SPV storage for WASM, chain-reorg recovery, confirmation retries/timeouts, MTP RPC support, and swap parameter validation. [#1644](https://github.com/GLEECBTC/komodo-defi-framework/pull/1644), [#1728](https://github.com/GLEECBTC/komodo-defi-framework/pull/1728)
-- Hardened browser/runtime infrastructure with IndexedDB cursor fixes, worker-safe IndexedDB access, WebSocket URL validation, wallet password RPCs, HD message signing, and external-wallet startup support. [#2028](https://github.com/GLEECBTC/komodo-defi-framework/pull/2028), [#2411](https://github.com/GLEECBTC/komodo-defi-framework/pull/2411)
-- Maintained core Rust architecture and tooling, including a custom enum-conversion derive macro, safer lazy initialization, Rust toolchain compatibility work, and workspace dependency organization with measured 28-44% faster builds in PR timing runs. [#1502](https://github.com/GLEECBTC/komodo-defi-framework/pull/1502), [#2449](https://github.com/GLEECBTC/komodo-defi-framework/pull/2449)
+- Delivered ARRR/Zcash browser support with WASM, IndexedDB wallet storage, async sync, and gRPC-web transport. [#1957](https://github.com/GLEECBTC/komodo-defi-framework/pull/1957), [#1996](https://github.com/GLEECBTC/komodo-defi-framework/pull/1996)
+- Fixed shielded-wallet sync and accounting bugs around unconfirmed change outputs and z-note tracking. [#2276](https://github.com/GLEECBTC/komodo-defi-framework/pull/2276), [#2331](https://github.com/GLEECBTC/komodo-defi-framework/pull/2331)
+- Built WalletConnect v2 support for EVM and Cosmos/Tendermint activation, withdrawals, swaps, and session persistence. [WC #3](https://github.com/KomodoPlatform/WalletConnectRust/pull/3), [#2223](https://github.com/GLEECBTC/komodo-defi-framework/pull/2223)
+- Improved SPV/UTXO reliability with IndexedDB header storage, chain-reorg recovery, confirmation fixes, and swap validation. [#1644](https://github.com/GLEECBTC/komodo-defi-framework/pull/1644), [#1728](https://github.com/GLEECBTC/komodo-defi-framework/pull/1728)
+- Hardened browser/runtime paths for IndexedDB cursors, WebSocket validation, wallet RPCs, HD signing, and external-wallet startup. [#2028](https://github.com/GLEECBTC/komodo-defi-framework/pull/2028), [#2411](https://github.com/GLEECBTC/komodo-defi-framework/pull/2411)
+- Maintained Rust tooling and architecture, including enum derive macros, safer lazy init, rustc compatibility, and 28-44% faster measured builds. [#1502](https://github.com/GLEECBTC/komodo-defi-framework/pull/1502), [#2449](https://github.com/GLEECBTC/komodo-defi-framework/pull/2449)
 
 ### Fullstack Engineer @ DDW
 *April 2020 - May 2022*
 
-- Built full-stack magazine websites with WordPress, Next.js, and TypeScript, covering frontend implementation, backend integration, custom editorial workflows, and production delivery.
-- Developed membership areas for reader audiences across the US and Europe, including authenticated access, gated content, account flows, and CMS-backed editorial publishing.
-- Improved performance, responsive UI, content modeling, WordPress customization, and frontend/backend handoff for editorial teams.
+- Built full-stack magazine sites with WordPress, Next.js, and TypeScript.
+- Developed membership areas with authenticated access, gated content, account flows, and CMS-backed publishing.
+- Improved performance, responsive UI, content modeling, and frontend/backend handoff for editorial teams.
 
 ## Contact
 
