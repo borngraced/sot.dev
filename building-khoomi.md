@@ -6,45 +6,74 @@ date: 2026-01-07
 
 ## Why Khoomi?
 
-Nigeria is home to a thriving community of artisans and small business owners who create unique products that reflect the country's rich cultural heritage: leather goods, textiles, jewelry, art, handcrafted furniture, fashion pieces, and crafts passed down through generations. But most of these creators remain invisible beyond their local markets.
+Khoomi started from a simple frustration: there are too many good makers in Nigeria who are still selling like the internet barely exists.
 
-The problem isn't talent. It's access.
+Crochet artists. Leather workers. Jewelers. Furniture makers. Skincare makers. Fashion designers. People making genuinely good things, but mostly selling through WhatsApp statuses, Instagram DMs, referrals, or physical markets. That works to a point, but it breaks down fast.
 
-Many of these businesses struggle to reach a wider audience beyond their immediate communities: limited access to technology, no user-friendly platforms to list their products, and no resources to market effectively. This doesn't just limit their ability to generate income but also restricts the wider public's access to their unique products.
+A buyer wants to browse, compare, save items, message the seller, pay safely, track an order, and come back later. A seller wants to list products, manage stock, take orders, set shipping, get paid, and not spend the whole day answering the same questions manually.
 
-Meanwhile, the platforms that do exist aren't built for this market. Global marketplaces don't serve Nigeria well: wrong payment rails, no local shipping infrastructure, international fees that eat into already thin margins, and an experience designed for Western sellers and buyers. Nigerian creators deserve better than being an afterthought on someone else's platform.
+The tools around them are either too informal or not built for this market. Global marketplaces are not thinking about Nigerian payment habits, local delivery realities, seller trust, small inventory, custom handmade products, or the fact that a lot of sellers are starting from their phone.
+
+So I started building Khoomi.
 
 ## What I'm Building
 
-Khoomi is a marketplace built from the ground up for Nigerian artisans and creatives. Not a clone of existing platforms with Naira slapped on top, but actual infrastructure designed for how this market works.
+Khoomi is a marketplace for handmade, creative, and small-batch products in Nigeria. The goal is not "Etsy but with naira" or a generic e-commerce clone. The goal is to build the boring infrastructure that lets local sellers run a real online shop without needing to become engineers, logistics operators, payment experts, and customer support teams all at once.
 
-That means:
+The buyer side is straightforward:
 
-- Local payment processing that handles bank transfers, cards, and mobile money; the ways Nigerians actually pay
-- Integrated shipping across all 36 states plus FCT, working with carriers like GIG to handle waybill generation, tracking, and the complexity of last-mile delivery in Nigeria
-- A wallet system with proper ledger-based transactions, so sellers can track their earnings, pending payments, and payouts with full transparency
-- Discovery tools that help buyers find incredible work that's been hidden in local markets; search, categories, and eventually personalized recommendations
+- discover products by category, search, shops, and recommendations
+- view listings with images, video, variations, personalization, reviews, and shipping details
+- add to cart, buy now, save to wishlist, message sellers, and place orders
+- track orders from payment through fulfillment
 
-The platform allows artisans and small business owners to create their own shops, showcase their products with descriptions and images, set their own pricing and shipping options, and manage orders. All through a simple interface that doesn't require technical expertise.
+The seller side is where most of the work is:
 
-## Why This Matters
+- shop creation and onboarding
+- listing editor with media, categories, inventory, variations, personalization, and shipping profiles
+- order management, shipping updates, cancellations, and receipts
+- wallet balances for pending and available earnings
+- payout/bank setup
+- discounts, analytics, reviews, notifications, and messaging
 
-I believe that everyone should have an equal opportunity to showcase their talents and reach a wider audience. The goal isn't just to build another e-commerce platform, it's to drive economic growth by supporting local businesses and creating opportunities for individuals who've been locked out of the digital economy.
+That sounds like a lot because it is a lot. Marketplaces are not landing pages with checkout buttons. Every small feature touches money, stock, trust, fulfillment, or support.
 
-By connecting talented artisans and small business owners with customers across Nigeria, Khoomi can help promote local entrepreneurship while giving buyers access to products they simply can't find anywhere else. The long-term vision extends beyond Nigeria, once we've built something that works here, there's an opportunity to expand across Africa, connecting creative economies that face similar challenges.
+## The Hard Parts
 
-## Why Me
+The most annoying parts are also the most important parts.
 
-I've spent years building complex systems, blockchain infrastructure, performance-critical code, the kind of engineering where getting the details wrong means real consequences. Building a marketplace that handles people's money and livelihoods requires that same rigor.
+Payments have to work the way Nigerians actually pay. Orders can contain products from multiple shops, so one checkout can become multiple seller fulfillment flows. A seller should not receive withdrawable earnings before an order is actually completed, so the wallet needs pending and available balances, not just one number on a screen.
 
-Khoomi's backend is built in Go with a clear architecture separating business logic from infrastructure. The wallet service uses a two-balance model (pending and available) with ledger-based transactions for complete audit trails. Payment processing integrates with Paystack for both buyer payments and seller payouts. Shipping uses a semi-integrated approach where Khoomi handles waybill generation and tracking while sellers manage physical handoffs, a pragmatic solution for Nigeria's logistics reality.
+Shipping has to be practical. Nigeria does not have the same logistics assumptions as the US or Europe. Sellers need shipping profiles, delivery estimates, handling fees, and a workflow that accepts the messy parts of local delivery instead of pretending they do not exist.
 
-This isn't a weekend project or a pitch deck waiting for someone else to build it. It's real infrastructure, being built piece by piece, designed to scale.
+Listings also get complicated quickly. A handmade bag can have sizes, colors, personalization, limited quantity, video, different prices per variation, and shipping constraints. A product model that works for books will not automatically work for crochet jewelry, skincare, furniture, and digital art.
 
-## The Opportunity
+This is why a lot of Khoomi is backend and product plumbing: carts, checkout, stock checks, order timelines, wallet ledgers, notification routing, messaging, seller dashboards, media uploads, category schemas, and admin moderation.
 
-Nigeria's e-commerce market is growing rapidly, but the creative economy remains massively underserved. There's no dedicated platform doing for Nigerian artisans what the best marketplaces have done elsewhere, providing not just a listing page, but the full stack of tools needed to run a real business online.
+The visible UI is only the top layer.
 
-Khoomi is my bet on what happens when you give talented people the right tools. The cultural heritage is already there. The creativity is already there. The demand is already there. What's missing is the infrastructure to connect it all.
+## Why I'm Writing About It
 
-That's what I'm building.
+I've been building Khoomi in public because the interesting part is not just "I built a marketplace." The interesting part is all the decisions underneath it.
+
+Why embed listing variations instead of making a separate collection? When should stock be reserved? How should a multi-vendor order be represented? What should be in a wallet ledger? What do you cache? What do you never cache? What should be native on mobile and what can wait?
+
+Those decisions are the kind of thing you only really learn by building the system and being forced to live with the trade-offs.
+
+I have started writing the technical notes here:
+
+- [Week 1: Listing Architecture Decisions](/building-khoomi-week-1.html)
+- [Week 2: Shop Architecture](/building-khoomi-week-2.html)
+- [Week 3: Multi-Vendor Order Architecture](/building-khoomi-week-3.html)
+
+## Where It Is Now
+
+Khoomi is still pre-launch. The platform is being tested, the iOS app is being built alongside the web app, and early sellers are being onboarded.
+
+There is still a lot to tighten: seller onboarding, mobile polish, shipping flows, account settings, order management, and the million small details that decide whether a seller trusts the platform enough to use it every day.
+
+But the direction is clear.
+
+Nigeria does not lack creativity. It lacks better infrastructure around that creativity.
+
+Khoomi is my attempt at building that infrastructure properly.
