@@ -201,4 +201,4 @@ Learning a language properly means learning what the code means to the machine, 
 
 Syntax tells you what you are allowed to write and the memory model tells you what you actually wrote.
 
-I personally recommend https://rust-book.cs.brown.edu for learning Rust as a beginner or someone who only ~knows~ but don't really understand it.
+I personally recommend [https://rust-book.cs.brown.edu](https://rust-book.cs.brown.edu) for learning Rust as a beginner or someone who only `knows` but don't really understand it.
