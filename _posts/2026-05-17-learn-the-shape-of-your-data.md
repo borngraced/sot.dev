@@ -200,3 +200,5 @@ I think this is why some people can write Rust for months and still feel like th
 Learning a language properly means learning what the code means to the machine, not every detail and not all at once, but enough that the behavior stops feeling random.
 
 Syntax tells you what you are allowed to write and the memory model tells you what you actually wrote.
+
+I personally recommend https://rust-book.cs.brown.edu for learning Rust as a beginner or someone who only ~knows~ but don't really understand it.
