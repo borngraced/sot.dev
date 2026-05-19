@@ -15,9 +15,7 @@ After high school, I tried to learn programming properly through online courses,
 
 Those questions led me into a big research and I started reading books like, `Introduction to Computer Organization`, `Introduction to Computer Systems: From Bits & Gates to C/C++ & Beyond`, `Hacker's Delight`, `Thinking Low Level, Writing High Level`, ARM assembly, compiler books like `Writing a C Compiler` and `Modern Compiler Implementation in C`, plus a lot of blogs, PDFs, and Reddit threads. After writing a lot of `C` and some worthy amount of `arm assembly`, I picked up `Rust` again and suddenly things started clicking and I didn't need to stress my brain or think too much since I now have the right mental model. I can keep talking more on this but I don't want this article to get longer that I want it to be so I'll stop now.
 
-```log
-Fun fact: during high school, I did most of that modding and web stuff on my `Nokia Symbian` and `Nokia Asha 200`. It was really fun xD.
-```
+*Fun fact:* during high school, I did most of that modding and web stuff on my `Nokia Symbian` and `Nokia Asha 200`. It was really fun xD.
 
 I do not mean every beginner needs to read a compiler book before writing `hello world` instead, I mean the basic questions that explain why the language behaves the way it behaves:
 
