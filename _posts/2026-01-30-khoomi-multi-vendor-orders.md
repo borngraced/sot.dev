@@ -1,13 +1,13 @@
 ---
 layout: post
-title: "Building Khoomi - Week 3: Multi-Vendor Order Architecture"
+title: "Building Khoomi: Multi-Vendor Order Architecture"
 description: "How orders work when a single checkout spans multiple sellers: parent-child structure, atomic inventory reservation, independent fulfillment, and escrow via wallet."
 image: https://sot.dev/assets/images/order-refund-complete.png
 date: 2026-01-30
 category: khoomi
 ---
 
-Last week I documented [shop architecture](/building-khoomi-week-2.html). This week, I will be writing on  how orders work when a customer buys from multiple shops in one checkout on Khoomi.
+Earlier in this series I covered [shop architecture](/khoomi-shop-architecture.html). This one is about how orders work when a customer buys from multiple shops in one checkout.
 
 On Khoomi, a single cart can contain items from different sellers. At checkout, that becomes one payment but multiple fulfillment flows. Shop A might ship tomorrow while Shop B takes a week. The order system needs to handle this gracefully.
 
@@ -55,7 +55,7 @@ type ShopOrder struct {
 }
 ```
 
-The parent `Order` tracks payment. Each `ShopOrder` tracks its own fulfillment. For an example, Shop `A` marking their portion as shipped doesn't affect Shop `B's` status(stays as "processing.", "paid" or whatever status it is)
+The parent `Order` tracks payment. Each `ShopOrder` tracks its own fulfillment. When Shop A marks its portion as shipped, Shop B's status doesn't budge — it stays exactly where it was.
 
 Why embed instead of separate collections? Atomic reads. Fetching an order for display is one query, not a join. The customer sees everything at once: their items, each shop's status, the overall payment state.
 
@@ -118,7 +118,9 @@ func (s *orderService) CreateOrderFromCart(ctx context.Context, userID ObjectID,
 
 The filter `"inventory.quantity": bson.M{"$gte": item.Quantity}` is critical. It ensures stock exists *before* decrementing. If two customers checkout simultaneously and only one item remains, exactly one succeeds. The other gets a clear error.
 
-Why reserve at checkout instead of cart add? I covered this decision in [Week 1](/building-khoomi-week-1.html#stock-reservation-later-not-sooner). The short version: carts are abandoned constantly, and reserving at checkout avoids expiry logic and hold timers.
+The snippet hides the rest of the unit of work. The same transaction records coupon usage (so a code can't be drained twice) and enqueues stock-change events for analytics and low-stock alerts. After it commits, the order triggers an outbox dispatch and a cache purge. Same shape — reserve, insert, clear — but the transaction is the whole checkout, not just three writes.
+
+Why reserve at checkout instead of cart add? I covered this decision in the [listing article](/khoomi-listing-architecture.html#stock-reservation-later-not-sooner). The short version: carts get abandoned constantly, and reserving at checkout means no expiry timers and no holds to babysit.
 
 ---
 
@@ -136,31 +138,51 @@ When a shop updates their status, only the order belonging to their shop gets up
 
 ```go
 func (s *orderService) UpdateShopOrderStatus(ctx context.Context, params UpdateShopOrderParams) error {
-    filter := bson.M{
-        "_id":                 params.OrderID,
-        "shop_orders.shop_id": params.ShopID,
+    currentStatus, err := extractCurrentShopOrderStatus(snapshot, params.ShopID)
+    if err != nil {
+        return err
     }
 
-    update := bson.M{
-        "$set": bson.M{
-            "shop_orders.$.shop_order_status": params.Status,
-            "updated_at":                      time.Now(),
+    // Include current status in the filter: two workers can't both win
+    filter := bson.M{
+        "_id": params.OrderID,
+        "shop_orders": bson.M{
+            "$elemMatch": bson.M{
+                "shop_id":           params.ShopID,
+                "shop_order_status": currentStatus,
+            },
         },
     }
 
-    if params.Status == OrderStatusShipped {
-        update["$set"].(bson.M)["shop_orders.$.shipped_at"] = time.Now()
-    }
+    callback := func(sessCtx context.Context) (any, error) {
+        result, err := os.db.Coll.Orders.UpdateOne(sessCtx, filter,
+            bson.M{"$set": buildShopOrderStatusSetFields(params.Status, now, params)})
+        if err != nil {
+            return nil, err
+        }
+        if result.ModifiedCount == 0 {
+            return nil, errors.New("shop order status has already changed, please retry")
+        }
 
-    callback := func(sessCtx mongo.SessionContext) (any, error) {
-        _, err := s.db.Coll.Orders.FindOneAndUpdate(sessCtx, filter, update).Decode(&order)
+        updatedOrder, err := os.GetOrderByID(sessCtx, params.OrderID)
         if err != nil {
             return nil, err
         }
 
-        // On delivery, release earnings to seller
         if params.Status == OrderStatusDelivered {
-            err := s.wallet.ReleaseEarnings(sessCtx, params.ShopID, params.OrderID)
+            // Release this shop's earnings to its wallet
+            err := s.wallet.ReleaseEarningsInTx(sessCtx, params.ShopID, params.OrderID)
+            if err != nil {
+                return nil, err
+            }
+        }
+
+        // Derived parent status: when every shop order reaches the same
+        // status, the parent follows automatically.
+        if allShopOrdersInStatus(updatedOrder, params.Status) {
+            _, err = os.db.Coll.Orders.UpdateOne(sessCtx,
+                bson.M{"_id": params.OrderID},
+                bson.M{"$set": buildMainOrderStatusSetFields(params.Status, now)})
             if err != nil {
                 return nil, err
             }
@@ -174,7 +196,9 @@ func (s *orderService) UpdateShopOrderStatus(ctx context.Context, params UpdateS
 }
 ```
 
-The `shop_orders.$` positional operator updates only the matching shop order within the parent document.
+The transitions themselves are validated before the write — `paid→processing/shipped/cancelled`, `processing→shipped/cancelled`, `shipped→delivered`. And because the filter carries the current status, two concurrent requests can't double-advance a shop order; one of them always loses. When Shop B marks a delivered order, only Shop B's earnings are released and its status moves.
+
+The interesting bit is the last step: the parent status is *derived*. Whenever every shop order reaches the same status, the empty parent follows automatically. All shops delivered → the order is delivered. Shop A shipped while Shop B is still processing → the parent keeps its previous label, because there's no honest single answer for "processing with one shipped component."
 
 Why not separate order documents per shop? The customer paid once. They expect one order number, one receipt, one tracking page. If I split orders into separate documents per shop, I'd need to reassemble them for every customer-facing view. Extra queries, extra complexity.
 
@@ -290,6 +314,16 @@ Why escrow? Buyer protection. If a seller never ships or order status is "paid",
 
 The trade-off? Sellers wait for their money. Cash flow suffers. But for a marketplace with unknown sellers, trust requires holding funds until delivery is confirmed.
 
+### The settlement split
+
+The wallet view hides the rest of the ledger. At payment time, the settlement engine recomputes a three-pot split for each shop order and verifies it against what was stamped at checkout:
+
+- **Seller earnings** — credited to the wallet's pending balance. This is the only slice that ever enters the wallet.
+- **Shipping escrow** — locks the full carrier cost in a separate account, released to the carrier on fulfillment (or clawed back on refund). If a promo funded the shipping, a `ShippingFundedBy` flag records who covers the gap.
+- **Platform fees** — credited to the platform account in the same transaction.
+
+So "release earnings on delivery" means: the seller's slice moves pending → available, and the shipping escrow pays the carrier. Two locks, two releases, one delivery event.
+
 ---
 
 ## Partial Cancellation
@@ -382,6 +416,8 @@ The `$[elem]` array filter lets me target a specific shop order by its `shop_id`
 
 Why allow partial cancellation? Stock issues happen. A seller might realize they can't fulfill an item after accepting the order. Cancelling the entire order (including items from other shops that are ready to ship) would punish buyers and other sellers for one shop's mistake.
 
+The real method goes through a cancel plan, not raw field edits. The plan answers a few questions up front: can this shop cancel at all, may it cancel from `shipped` (only before the carrier confirms pickup), does inventory need restoring, which shops get refund records, and what should the parent become if every shop cancels. After the transaction, applied coupons for the cancelled branch get rolled back, and the refund records the plan creates carry the reverse-split amounts — seller earnings clawback, shipping-escrow debit, and platform-fee clawback are tracked separately, not rolled into one number.
+
 When a paid order is cancelled, it also creates a refund record:
 
 ```go
@@ -397,10 +433,14 @@ type ShopOrderRefund struct {
     FailureReason string          `bson:"failure_reason,omitempty"`
     RetryCount    int             `bson:"retry_count"`
     LastRetryAt   *time.Time      `bson:"last_retry_at,omitempty"`
+
+    // Reverse settlement split: each pot clawed back separately.
+    Scope               RefundScopeName `bson:"refund_scope,omitempty"`
+    WalletDeductAmount  int64           `bson:"wallet_deduct_amount,omitempty"`   // seller earnings
+    EscrowDebitAmount   int64           `bson:"escrow_debit_amount,omitempty"`    // shipping escrow
+    PlatformDebitAmount int64           `bson:"platform_debit_amount,omitempty"`  // fee clawback
 }
 ```
-
-The refund starts as `pending`. A background job picks it up.
 
 ---
 
@@ -521,7 +561,7 @@ func (s *walletService) DeductForRefund(ctx context.Context, shopID, orderID Obj
 }
 ```
 
-The refund deducts from both `pending_balance` and `total_earnings`. The seller never actually earned this money. It's going back to the customer.
+The refund deducts from `pending_balance` and `total_earnings` — the seller never actually earned this money, it's going back to the customer. But the deduction is only the *seller earnings* slice. The same refund also debits the shipping escrow and claws back the platform fees, each pot tracked separately in the refund record. The buyer-facing refund amount is the sum; the bookkeeping keeps the parts.
 
 ![Order refund completed](/assets/images/order-refund-complete.png)
 
@@ -534,38 +574,31 @@ The trade-off? If the seller somehow withdrew before delivery (which shouldn't h
 Pending orders that never get paid should release their inventory:
 
 ```go
-func (s *orderService) CleanupExpiredPendingOrders(ctx context.Context, expirationHours int) (int64, error) {
-    expiredTime := time.Now().Add(-time.Duration(expirationHours) * time.Hour)
+// GetPendingOrdersForCleanup finds them; CancelExpiredOrder cancels one.
+func (s *orderService) CancelExpiredOrder(ctx context.Context, orderID ObjectID) error {
+    expiredTime := time.Now().Add(-24 * time.Hour)
+    var order models.Order
 
-    filter := bson.M{
-        "status":     OrderStatusPending,
-        "created_at": bson.M{"$lt": expiredTime},
-    }
-
-    cursor, _ := s.db.Coll.Orders.Find(ctx, filter)
-    var expiredOrders []Order
-    cursor.All(ctx, &expiredOrders)
-
-    var cleanedCount int64
-    for _, order := range expiredOrders {
-        callback := func(sessCtx mongo.SessionContext) (any, error) {
-            // Cancel the order
-            update := bson.M{
-                "$set": bson.M{
-                    "status":                            OrderStatusCancelled,
-                    "payment_status":                    "expired",
-                    "internal_note":                     fmt.Sprintf("Auto-cancelled: Payment not received within %d hours", expirationHours),
-                    "shop_orders.$[].shop_order_status": OrderStatusCancelled,
-                },
-            }
+    callback := func(sessCtx mongo.SessionContext) (any, error) {
+        // Cancel the order (guarded: already-cancelled or paid won't match)
+        update := bson.M{
+            "$set": bson.M{
+                "status":                            OrderStatusCancelled,
+                "payment_status":                    "expired",
+                "internal_note":                     "Auto-cancelled: Payment not received within expiration period",
+                "cancelled_at":                      time.Now(),
+                "shop_orders.$[].shop_order_status": OrderStatusCancelled,
+            },
+        }
             result, err := s.db.Coll.Orders.UpdateOne(sessCtx,
-                bson.M{"_id": order.ID, "status": OrderStatusPending}, update)
+                bson.M{"_id": orderID, "status": OrderStatusPending}, update)
             if result.ModifiedCount == 0 {
-                // Already processed
-                return nil, nil 
+                // Already cancelled or paid — nothing to do
+                return nil, nil
             }
 
             // Restore all inventory
+            order, _ = s.GetOrderByID(sessCtx, orderID)
             for _, shop := range order.ShopOrders {
                 for _, item := range shop.Items {
                     inventoryUpdate := bson.M{
@@ -575,22 +608,20 @@ func (s *orderService) CleanupExpiredPendingOrders(ctx context.Context, expirati
                 }
             }
 
-            return result.ModifiedCount, nil
-        }
-
-        result, _ := database.ExecuteTransaction(ctx, s.db.MongoClient, callback)
-        if count, ok := result.(int64); ok {
-            cleanedCount += count
+            return nil, nil
         }
     }
 
-    return cleanedCount, nil
+    _, err := os.db.WithTransaction(ctx, callback)
+    return err
 }
 ```
 
-This runs as a background job every 24 hours. That window gives customers enough time to complete bank transfers (which can take hours in Nigeria), but not long enough to hold inventory hostage indefinitely.
+A `PendingOrdersJob` runs every six hours and publishes an expiration event that a consumer acts on. Orders expire after 24 hours of unpaid `pending` — and a reminder fires at the 12-hour mark so the customer can still pay before the cutoff. That window gives customers enough time to complete bank transfers (which can take hours in Nigeria), but not long enough to hold inventory hostage indefinitely.
 
-The double-check filter `"status": OrderStatusPending` in the update ensures idempotency. If payment came through between the find and update, the order won't be cancelled. The filter simply won't match.
+The handler is careful not to kill a paid order that *looks* pending. It re-syncs each order's payment status first (`VerifyAndUpdatePaidOrder`): if the payment actually landed, the order gets marked paid and skipped. Only truly unpaid orders are cancelled. And the `"status": OrderStatusPending` inside the update filter keeps the whole thing idempotent — if payment came through between the scan and the update, the filter simply won't match.
+
+Each cancellation runs in its own transaction: flip the status, restore inventory, enqueue the expired-order event, and after the commit, roll back any applied coupons.
 
 ---
 
@@ -611,22 +642,17 @@ type SellerPayout struct {
 Calculated at checkout:
 
 ```go
-shopTotal := shopSubtotal + shippingCost + handlingFee - shopDiscount
+shopTotal := shopSubtotal + buyerFacingShipping + handlingFee - shopDiscount
 
-platformFee := shopTotal * PLATFORM_FEE_RATE / PERCENT_DIVISOR / 100
-transactionFee := shopTotal * TRANSACTION_FEE_RATE / PERCENT_DIVISOR / 100
+// Fees carve off the item subtotal, not the shop total
+platformFee := shopSubtotal * PLATFORM_FEE_RATE / PERCENT_DIVISOR / 100
+transactionFee := shopSubtotal * TRANSACTION_FEE_RATE / PERCENT_DIVISOR / 100
 netAmount := shopTotal - platformFee - transactionFee
-
-shopOrder.SellerPayout = SellerPayout{
-    Amount:         shopTotal,
-    PlatformFee:    platformFee,
-    TransactionFee: transactionFee,
-    NetAmount:      netAmount,
-    PayoutStatus:   "pending",
-}
 ```
 
-Why calculate at checkout instead of delivery? Transparency. When a seller views an incoming order, they see exactly what they'll receive. No surprises when withdrawal time comes. "You'll get ₦54,000 from this ₦60,000 order" is clear.
+Stamped at checkout so a seller viewing an incoming order sees roughly what they'll get — "You'll get ₦54,000 from this ₦60,000 order." But the *authoritative* number comes later: at payment, the settlement engine recomputes the three-pot split (earnings, shipping escrow, fees) and asserts it matches the stamped breakdown before crediting the wallet. The `NetAmount` above is display-only; the wallet is credited the settlement's earnings slice.
+
+Why calculate at checkout instead of delivery? Transparency. No surprises when withdrawal time comes.
 
 The trade-off? Fee changes don't apply retroactively. If I lower the platform fee tomorrow, orders placed today still use today's rate. For accounting consistency, that's actually what I want.
 
@@ -634,15 +660,17 @@ The trade-off? Fee changes don't apply retroactively. If I lower the platform fe
 
 ## What I'd Do Differently
 
-**The parent order status.** Currently `Order.Status` is supposed to be the "overall" status, but what does "processing" mean when Shop A is shipped and Shop B is still packing? I should probably derive it from shop order statuses instead of storing it separately. Or at least define clearer rules for when the parent status changes.
+**The parent order status — done.** This used to be a wishlist item: `Order.Status` mixed meanings whenever shops diverged. The code now derives the parent status — when every shop order reaches the same status, the parent follows. The genuinely mixed case (one shipped, one processing) still has no single label, and that's correct: there isn't one.
 
-**Refund status visibility.** Refund status lives inside `ShopOrder.Refund`. That's fine for displaying a single order, but when customer support asks "show me all failed refunds this week," I have to scan every order document. A separate refunds collection with proper indexing would make those queries instant.
+**Refund settlement coupling.** The reverse split (wallet, escrow, platform fees) is correct now, but it lives spread across three services and a hand-written invariant check that fails closed on mismatch. If the money model evolves again, that's the file I expect to touch. I'd like the split rules in one place with property tests over the invariants.
+
+**Refund status visibility — mostly solved.** Refund requests now live in their own collection, so support's "all failed refunds this week" query is a normal indexed query instead of a scan. The remaining smell is that the *processing* state still lives embedded on the shop order — a reasonable place for single-order views, but it means the scheduler and the request collection must agree on whose refund is whose.
 
 ---
 
 ## The Pattern
 
-Same as previous weeks: optimize for the common case.
+Same philosophy as the earlier posts: optimize for the common case.
 
 - Most orders have 1-2 shops → embed, don't normalize
 - Most checkouts succeed → reserve at checkout, not cart add
@@ -654,6 +682,12 @@ The multi-vendor order system handles the 90% case elegantly. The 10% (complex d
 
 ---
 
-*Next week: Wallets and seller withdrawals.*
+*Next: Wallets and seller withdrawals.*
 
 —Samuel
+
+---
+
+*Edits:*
+
+- *2026-08-19: Brought the post in line with the current code: the checkout transaction also records coupon usage and stock events; "independent fulfillment" now shows the concurrency guard and the derived parent status (the old "what I'd do differently" item, now done); added the settlement split — seller earnings, shipping escrow, and platform fees are kept in separate pots and refunds claw back each one; partial cancellation runs through a cancel plan with a carrier-pickup guard; expired orders are handled by a six-hour scheduler with a 12-hour reminder and a payment re-check first; fees are computed on the item subtotal and `net_amount` is display-only, since the wallet is credited the settlement's earnings slice.*

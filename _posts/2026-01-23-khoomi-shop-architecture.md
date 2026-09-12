@@ -1,13 +1,13 @@
 ---
 layout: post
-title: "Building Khoomi - Week 2: Shop Architecture"
-description: "How shops work as separate entities from users, atomic creation transactions, embedded followers, and the decisions that make a marketplace seller experience."
+title: "Building Khoomi: Shop Architecture"
+description: "How shops work as separate entities from users, atomic creation transactions, follow counters, and the decisions that make a marketplace seller experience."
 image: https://sot.dev/assets/images/boromir.webp
 date: 2026-01-23
 category: khoomi
 ---
 
-Last week I documented [listing architecture](/building-khoomi-week-1.html). This week: the shops that own those listings.
+Earlier in this series I covered [listing architecture](/khoomi-listing-architecture.html). This one is about the shops that own those listings.
 
 On Khoomi, a shop is a seller's storefront—distinct from the user account that handles authentication. This separation lets the same person buy (via their user account) and sell (via their shop) while keeping concerns cleanly separated.
 
@@ -39,7 +39,7 @@ The trade-off? Users who genuinely need multiple shops (say, one for jewelry and
 
 ## Atomic Shop Creation
 
-Creating a shop touches four collections in one transaction:
+Creating a shop touches three collections in one transaction:
 
 ```go
 func (s *ShopServiceImpl) CreateShop(ctx context.Context, req CreateShopRequest, ownerID ObjectID) (ObjectID, error) {
@@ -64,14 +64,8 @@ func (s *ShopServiceImpl) CreateShop(ctx context.Context, req CreateShopRequest,
             return primitive.NilObjectID, err
         }
 
-        // 3. Create notification settings
-        _, err = s.CreateShopNotificationSettings(ctx, shopID)
-        if err != nil {
-            return primitive.NilObjectID, err
-        }
-
-        // 4. Create wallet for earnings
-        _, err = s.wallet.CreateWallet(ctx, shopID, ownerID)
+        // 3. Create wallet for earnings
+        _, err = s.wallet.CreateWallet(ctx, models.CreateWalletParams{ShopID: shopID, UserID: ownerID})
         if err != nil {
             return primitive.NilObjectID, err
         }
@@ -84,11 +78,13 @@ func (s *ShopServiceImpl) CreateShop(ctx context.Context, req CreateShopRequest,
 }
 ```
 
-Four operations, one transaction. If the wallet creation fails, the user update rolls back. If the notification settings fail, the shop insert rolls back. No half-created sellers.
+Three operations, one transaction. If the wallet creation fails, the shop insert and the user update roll back. No half-created sellers.
 
 Why a transaction instead of eventual consistency? A user with `is_seller: true` but no shop would break the dashboard. A shop without a wallet can't receive payments. These invariants must hold at all times.
 
 The trade-off? MongoDB transactions require replica sets. Single-node development setups need extra configuration. And transactions are slower than individual writes. For shop creation (once per seller, ever), the latency is acceptable.
+
+After the transaction commits, we purge the seller's caches and publish a `ShopCreatedEvent` for the follow-up work—fan-out, analytics, order routing. That's the stuff that can safely happen outside the atomic boundary.
 
 ![One does not simply create a shop without a transaction](/assets/images/boromir.webp)
 
@@ -106,6 +102,7 @@ const (
     ShopStatusWarning       = "warning"       // Minor violation confirmed
     ShopStatusSuspended     = "suspended"     // Temporarily disabled
     ShopStatusBanned        = "banned"        // Permanently removed
+    ShopStatusRejected      = "rejected"      // Review refused onboarding
 )
 ```
 
@@ -114,65 +111,70 @@ The state machine:
 ```
 INACTIVE → ACTIVE → PENDING_REVIEW → WARNING → BANNED
                  \→ SUSPENDED
+                 \→ REJECTED
 ```
 
 Most shops stay `active` forever. `inactive` gives sellers time to configure branding before going live. `pendingreview` lets moderation investigate without immediately punishing. `suspended` is reversible; `banned` is terminal.
 
-Why not just `active` and `banned`? Nuance. A shop selling knockoffs needs immediate suspension. A shop with unclear product descriptions needs a warning, not a ban. The intermediate states let us match response to severity.
+Why not just `active` and `banned`? Nuance. A shop selling knockoffs needs immediate suspension. A shop whose profiles got flagged at review needs a `rejected`, not a ban. The intermediate states let us match response to severity.
+
+Status isn't the only visibility gate anymore. Shops also carry `is_live`—a seller-controlled toggle, gated on identity verification—and `ready_to_sell`, a system-computed flag that's true only when the address, payment info, and a shipping profile all exist on an active shop. Public discovery requires both. So `status` says what the platform allows; the flags say what the seller has actually finished setting up.
 
 ---
 
-## Embedded Followers (Bounded)
+## Following (Collection + Counter)
 
-The shop document embeds the 5 most recent followers:
+Followers live in a `shop_followers` collection. The shop document only keeps a counter:
 
 ```go
 type Shop struct {
     // ...
-    Followers     []ShopFollower `bson:"followers"`     // Embedded (max 5)
-    FollowerCount int            `bson:"follower_count"`
+    FollowerCount int `bson:"follower_count"`
 }
 ```
 
-When someone follows a shop:
+When someone follows a shop, two writes happen in one transaction:
 
 ```go
-func (s *ShopServiceImpl) FollowShop(ctx context.Context, userID, shopID ObjectID) (ObjectID, error) {
-    callback := func(ctx mongo.SessionContext) (any, error) {
-        // Insert into followers collection (full list)
-        _, err := s.db.Coll.ShopFollowers.InsertOne(ctx, followerData)
+func (s *service) FollowShop(ctx context.Context, params models.UserShopParams) (bson.ObjectID, error) {
+    followerID := bson.NewObjectID()
+
+    callback := func(sessCtx context.Context) (any, error) {
+        // 1. Insert the follower record
+        _, err := s.db.Coll.ShopFollowers.InsertOne(sessCtx, shopMemberData)
         if err != nil {
             if mongo.IsDuplicateKeyError(err) {
-                return nil, errors.New("already following this shop")
+                return bson.NilObjectID, errors.New("already following this shop")
             }
-            return nil, err
+            return bson.NilObjectID, err
         }
 
-        // Update shop with bounded embedded array
-        update := bson.M{
-            "$push": bson.M{
-                "followers": bson.M{
-                    "$each":     bson.A{followerExcerpt},
-                    "$sort":     bson.M{"joined_at": -1},
-                    "$slice":    5,        // Keep only 5
-                    "$position": 0,        // Prepend (newest first)
-                },
-            },
-            "$inc": bson.M{"follower_count": 1},
+        // 2. Bump the counter
+        _, err = s.db.Coll.Shops.UpdateOne(sessCtx,
+            bson.M{"_id": shopID},
+            bson.M{"$set": bson.M{"modified_at": now}, "$inc": bson.M{"follower_count": 1}})
+        if err != nil {
+            return bson.NilObjectID, err
         }
-        _, err = s.db.Coll.Shops.UpdateOne(ctx, bson.M{"_id": shopID}, update)
-        return followerID, err
+
+        return followerID, nil
     }
 
-    return database.ExecuteTransaction(ctx, s.db.MongoClient, callback)
+    _, err := s.db.WithTransaction(ctx, callback)
+    if err != nil {
+        return bson.NilObjectID, err
+    }
+    return followerID, nil
 }
 ```
 
-The `$slice: 5` operator caps the embedded array. The full follower list lives in `shop_followers` collection for pagination.
+A duplicate follow hits MongoDB's unique index and fails the whole transaction. Unfollow is the mirror image—delete the record, decrement the counter. Because both writes always move together, the counter can't drift from the list.
 
-Why embed at all? The shop profile page shows "recent followers" without a join. One document fetch, one render. For a shop with 10,000 followers, loading the full list would be wasteful when we only display 5.
+"Recent followers" on the profile page is a paginated query against `shop_followers`, newest first. The `Followers` field on the `Shop` struct is `bson:"-"`—populated on read, never stored.
 
-The trade-off? Two writes per follow (collection + embedded). The embedded data can drift if updates fail partially—though the transaction prevents this. And we're duplicating data. For 5 followers × ~100 bytes each, the duplication is negligible.
+Why a collection instead of embedding a bounded array (as I'd originally planned)? A per-shop `shop_id, joined_at` query is indexed and cheap, and it's not a hot read path like listing views. And the dedicated collection earns its keep elsewhere: the feed subsystem queries it to figure out who to notify whenever a shop posts.
+
+The trade-off? The profile page is technically two queries instead of one. Against everything else a shop page loads, that's a rounding error.
 
 ---
 
@@ -182,25 +184,31 @@ Each shop can have multiple shipping profiles:
 
 ```go
 type ShopShippingProfile struct {
-    ID              ObjectID `bson:"_id"`
-    ShopID          ObjectID `bson:"shop_id"`
-    Title           string   `bson:"title"`           // "Standard Shipping"
-    OriginState     string   `bson:"origin_state"`    // "Lagos"
-    PrimaryPrice    int64    `bson:"primary_price"`   // Same zone (kobo)
-    SecondaryPrice  int64    `bson:"secondary_price"` // Different zone (kobo)
-    MinDeliveryDays int      `bson:"min_delivery_days"`
-    MaxDeliveryDays int      `bson:"max_delivery_days"`
-    IsDefault       bool     `bson:"is_default"`
-    AcceptReturns   bool     `bson:"accept_returns"`
-    ReturnPeriod    int      `bson:"return_period"`   // Days
+    ID                bson.ObjectID `bson:"_id"`
+    ShopID            bson.ObjectID `bson:"shop_id"`
+    Title             string        `bson:"title"`           // "Standard Shipping"
+    OriginState       string        `bson:"-"`               // "Lagos" — joined, not stored
+    DestinationBy     string        `bson:"destination_by"`  // "state" | "zone" | "everywhere"
+    Destinations      []string      `bson:"destinations"`
+    Shipping          Shipping      `bson:"service"`         // "fez" | "shipbubble"
+    Processing        ShippingProcessing `bson:"processing"`
+    PrimaryPrice      int64         `bson:"primary_price"`   // Same zone (kobo)
+    SecondaryPrice    int64         `bson:"secondary_price"` // Different zone (kobo)
+    MinDeliveryDays   int           `bson:"min_delivery_days"`
+    MaxDeliveryDays   int           `bson:"max_delivery_days"`
+    HandlingFee       int64         `bson:"handling_fee"`
+    OffersFreeShipping bool         `bson:"offers_free_shipping"`
+    IsDefault         bool          `bson:"is_default"`
 }
 ```
 
-The dual pricing (`PrimaryPrice` vs `SecondaryPrice`) reflects Nigerian geography. Shipping within Lagos is cheaper than shipping from Lagos to Benue. Rather than model all 36 states individually, I use two tiers: same zone vs different zone.
+The dual pricing (`PrimaryPrice` vs `SecondaryPrice`) still reflects Nigerian geography. Shipping within Lagos is cheaper than shipping from Lagos to Benue. Rather than model all 36 states individually, the base calculation uses two tiers: same zone vs different zone. A jewelry maker in Lagos charges ₦1,500 for Lagos delivery, ₦3,000 everywhere else.
 
-Why not per-state pricing? Complexity. Most sellers ship from one location. Two tiers cover 90% of cases. A jewelry maker in Lagos charges ₦1,500 for Lagos delivery, ₦3,000 everywhere else. Good enough.
+The two tiers are the *fallback*, though. Each profile rides on a shipping service (`FEZ` or Shipbubble), and at cart/checkout the service computes live rates from the destination state and the package weight when it can. The profile's prices are what you get when the service can't—or when the seller just prefers flat rates.
 
-The trade-off? Sellers shipping to specific states (say, only Southwest Nigeria) need workarounds. The `Destinations` field exists for this, but most sellers just use "everywhere."
+Why not per-state pricing? Complexity. Most sellers ship from one location. Two tiers cover 90% of cases. For sellers who do need targeting, `DestinationBy` restricts a profile to a state, a zone, or everywhere, and `Destinations` names the targets. But most sellers just use "everywhere."
+
+The trade-off? All this is a lot of surface area on one document. Two pieces of polish keep it sane: `MinDeliveryDays`/`MaxDeliveryDays` give the buyer an honest "arrives in 2–4 days," and returns are *not* here anymore—they moved to a separate shop policy (`accepts_return`, `accepts_exchanges`, `return_deadline`), with individual listings able to override.
 
 ---
 
@@ -330,7 +338,7 @@ Why not a separate announcements collection with history? Overkill. Sellers upda
 
 ## What I'd Do Differently
 
-**The 5-follower embedding.** It works, but it's a magic number. If the design team wants to show 10 followers on the profile page, I need a migration. A configurable limit or a separate "recent followers" query might be more flexible.
+**The follower counter.** `follower_count` is a denormalized number that has to be incremented in the same transaction as the follow insert. It works, and the transaction keeps it honest. But it's the kind of invariant that silently corrupts the moment someone forgets the unit of work. Deriving it from the collection—or better, from the stats document below—would remove the coupling entirely.
 
 **The notification count queries.** Six parallel queries is fast, but it's still six round trips to MongoDB. A dedicated "shop stats" document updated via change streams would be faster. I'd pay for it with eventual consistency, but dashboard counts don't need to be real-time accurate.
 
@@ -341,7 +349,7 @@ Why not a separate announcements collection with history? Overkill. Sellers upda
 Same philosophy as listings: optimize for the common case.
 
 - Most users own one shop → enforce 1:1, don't build multi-shop support
-- Most shop pages show few followers → embed 5, paginate the rest
+- Most shop pages show few followers → query the recent few, paginate the rest
 - Most sellers ship two tiers → primary/secondary pricing, not per-state
 - Most dashboard loads need all counts → parallelize, don't waterfall
 
@@ -349,6 +357,12 @@ The shop architecture is stable. New features—analytics dashboards, promotiona
 
 ---
 
-*Next: [Week 3 - Multi-Vendor Order Architecture](/building-khoomi-week-3.html)*
+*Next: [Multi-Vendor Order Architecture](/khoomi-multi-vendor-orders.html)*
 
 —Samuel
+
+---
+
+*Edits:*
+
+- *2026-08-19: Brought the article in line with the current code: shop creation is three collections (notification settings are gone) plus a post-commit event; added `rejected` and the `is_live`/`ready_to_sell` visibility gates; followers are a separate collection with a transactional counter instead of an embedded array; shipping profiles grew `destination_by`, services, handling fees, and free-shipping — and returns moved to a shop policy.*

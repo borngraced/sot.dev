@@ -62,9 +62,9 @@ Those decisions are the kind of thing you only really learn by building the syst
 
 I have started writing the technical notes here:
 
-- [Week 1: Listing Architecture Decisions](/building-khoomi-week-1.html)
-- [Week 2: Shop Architecture](/building-khoomi-week-2.html)
-- [Week 3: Multi-Vendor Order Architecture](/building-khoomi-week-3.html)
+- [Listing Architecture Decisions](/khoomi-listing-architecture.html)
+- [Shop Architecture](/khoomi-shop-architecture.html)
+- [Multi-Vendor Order Architecture](/khoomi-multi-vendor-orders.html)
 
 ## Where It Is Now
 
