@@ -3,7 +3,7 @@ author: Samuel Onoja # name of site's author
 email: 0@sot.dev # email of site's author
 url: https://sot.dev # root address of the site
 baseurl: ""
-description: Samuel Onoja - Rust software engineer.
+description: Samuel Onoja - systems and backend software engineer (Rust, Go).
 
 twitter:
   card: summary_large_image

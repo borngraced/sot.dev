@@ -28,7 +28,7 @@ If you genuinely want the memory back rather than instant re-open, there is drop
 
 `WgpuContext::instance()` builds a `wgpu::Backends::VULKAN | GL` instance and lets the loader enumerate every ICD it finds. Software renderers like `lavapipe`, `llvmpipe` and `dzn` are worth tens of MB each, and the GL backend pulls in the whole EGL/gallium stack, all of it getting mapped into your process just so wgpu can pick an adapter.
 
-I actually got this one into Zed proper. The PR is [zed-industries/zed#63346](https://github.com/zed-industries/zed/pull/63346), `gpui_wgpu: Skip software Vulkan ICDs and GL on Linux startup`. Before `vkCreateInstance`, set this.
+The fix is proposed in [zed-industries/zed#63346](https://github.com/zed-industries/zed/pull/63346), `gpui_wgpu: Skip software Vulkan ICDs and GL on Linux startup`, which is still open at the time of writing. Before `vkCreateInstance`, set this.
 
 ```
 VK_LOADER_DRIVERS_DISABLE=*lvp*,*lavapipe*,*llvmpipe*,*dzn*,*swrast*,*swiftshader*
@@ -41,7 +41,7 @@ GPU warm on open   ~78 MiB  ->  ~36 MiB
 in-use, settled    ~141 MiB ->  ~70 MiB
 ```
 
-Because it lives in the shared `gpui_wgpu` crate, Zed's startup gets the same ~36 to 49 MiB back too, so it is not an awari-only trick.
+Because it lives in the shared `gpui_wgpu` crate, Zed's startup would get the same ~36 to 49 MiB back once the PR lands, so it is not an awari-only trick.
 
 ## Sprite atlases only grow up
 
