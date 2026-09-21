@@ -7,7 +7,7 @@ title: Projects
 
 * **[Building Khoomi](/building-khoomi.html)**: an African marketplace for handmade goods. I built the backend from scratch in Go, covering multi-vendor orders, inventory, shipping, seller wallets, payouts, notifications, and moderation. More on the architecture: [orders](/khoomi-multi-vendor-orders.html), [shops](/khoomi-shop-architecture.html), and [listings](/khoomi-listing-architecture.html).
 * **[DDW](https://www.dontdiewondering.com)**: a magazine platform built with Next.js and TypeScript, with memberships, gated content, and CMS-backed publishing.
-* **[awari](https://github.com/borngraced/awari)**: a Wayland app launcher built on GPUI, Zed's UI framework. I profiled its startup and memory use and brought idle memory down from ~141 MiB to ~39 MiB. [I wrote about the work here](/cutting-a-Rust-GPUI-launcher-idle-memory.html).
+* **[awari](https://github.com/borngraced/awari)**: a Wayland app launcher built on GPUI, Zed's UI framework. I profiled its startup and memory use and brought idle memory down from ~141 MiB to ~39 MiB. [I wrote about the work here](/cutting-a-rust-gpui-launcher-idle-memory.html).
 
 ## Low-level libraries
 

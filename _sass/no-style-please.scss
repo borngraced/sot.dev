@@ -1,54 +1,55 @@
 // -------------- THEME SWITCHER -------------- //
 @mixin dark-appearance {
-  background: #2e3440;
-  color: #d8dee9;
+  background: #181616;
+  color: #c5c9c5;
 
   a {
-    color: #88c0d0;
+    color: #8ba4b0;
   }
 
   code {
-    color: #88c0d0;
-    background: #3b4252;
+    color: #e6c384;
+    background: #1b1b1b;
+  }
+
+  div.highlighter-rouge {
+    background: #131313;
   }
 
   div.highlighter-rouge code {
-    color: #d8dee9;
-    background: #2e3440;
+    color: #c5c9c5;
+    background: transparent;
   }
 
   .highlight {
-    background: #2e3440;
-    color: #d8dee9;
+    background: #131313;
+    color: #c5c9c5;
 
-    .c, .c1, .cm, .cs { color: #616e88; font-style: italic; }
-    .k, .kc, .kd, .kn, .kp, .kr, .kt { color: #81a1c1; }
-    .s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr { color: #a3be8c; }
-    .n, .na, .nb, .nc, .nd, .ni, .ne, .nf, .nl, .nn, .no, .nt, .nv { color: #8fbcbb; }
-    .m, .mf, .mh, .mi, .mo, .il { color: #b48ead; }
-    .o, .ow { color: #81a1c1; }
-    .p { color: #d8dee9; }
-    .gi { color: #a3be8c; }
-    .gd { color: #bf616a; }
-    .gh { color: #88c0d0; }
-    .cp { color: #d08770; }
-    .err { color: #bf616a; }
-    .w { color: #d8dee9; }
+    .c, .c1, .cm, .cs { color: #625e5a; font-style: italic; }
+    .k, .kc, .kd, .kn, .kp, .kr, .kt { color: #c4746e; }
+    .s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr { color: #8a9a7b; }
+    .n, .na, .nb, .nc, .nd, .ni, .ne, .nf, .nl, .nn, .no, .nt, .nv { color: #8ba4b0; }
+    .m, .mf, .mh, .mi, .mo, .il { color: #b6927b; }
+    .o, .ow { color: #c4746e; }
+    .p { color: #c5c9c5; }
+    .gi { color: #8a9a7b; }
+    .gd { color: #c4746e; }
+    .gh { color: #8ba4b0; }
+    .cp { color: #a292a3; }
+    .err { color: #e46876; }
+    .w { color: #c5c9c5; }
   }
 
   blockquote {
-    color: #616e88;
-    margin: 0;
-    border: none;
-    padding-left: 1rem;
+    border-color: #625e5a;
   }
 
   table, th, td {
-    border-color: #4c566a;
+    border-color: #625e5a;
   }
 
   *:target {
-    background: #3b4252;
+    background: #2d4f67;
   }
 }
 
@@ -62,17 +63,17 @@ body[a="dark"] { @include dark-appearance; }
 // bg color is also needed in html in order to
 // block body's background propagation
 // see: https://stackoverflow.com/a/61265706
-html, body { background: #eceff4; }
+html, body { background: white; }
 
 @media (prefers-color-scheme: dark) {
-  html[a="auto"], body[a="auto"] { background: #2e3440; }
+  html[a="auto"], body[a="auto"] { background: #181616; }
 }
-html[a="dark"], body[a="dark"] { background: #2e3440; }
+html[a="dark"], body[a="dark"] { background: #181616; }
 
 html { height: 100%; }
 
 body {
-  color: #2e3440;
+  color: black;
   font-family: 'JetBrains Mono', monospace;
   font-size: 15px;
   line-height: 1.5;
@@ -97,7 +98,7 @@ p { margin: 1rem 0; }
 
 li { margin: 0.4rem 0; }
 
-*:target { background: #d8dee9; }
+*:target { background: yellow; }
 
 .w {
   max-width: 780px;
@@ -120,56 +121,60 @@ hr {
 table { width: 100%; }
 
 table, th, td {
-  border: thin solid #d8dee9;
+  border: thin solid black;
   border-collapse: collapse;
   padding: 0.4rem;
 }
 
 code {
-  color: #2e3440;
-  background: #e5e9f0;
+  font-family: 'JetBrains Mono', monospace;
+  color: #5e4a1f;
+  background: #f0ece2;
   padding: 0.15em 0.35em;
-  border-radius: 3px;
+  border-radius: 4px;
   font-size: 0.9em;
+}
+
+div.highlighter-rouge {
+  border-radius: 8px;
+  margin: 1rem 0;
 }
 
 div.highlighter-rouge code {
   display: block;
-  overflow-x: auto;
   white-space: pre-wrap;
-  padding: 1rem;
-  border-radius: 5px;
+  overflow-wrap: break-word;
+  padding: 1.1rem 1.2rem;
   font-size: 0.85em;
-  color: #2e3440;
-  background: #e5e9f0;
+  line-height: 1.6;
+  color: #2a2a2a;
+  background: #f0ece2;
 }
 
-// Nord Light syntax highlighting (light mode)
+// Kanagawa Light syntax highlighting (light mode)
 .highlight {
-  background: #e5e9f0;
-  color: #2e3440;
+  background: #f0ece2;
+  color: #2a2a2a;
 
-  .c, .c1, .cm, .cs { color: #7b88a1; font-style: italic; } // comments
-  .k, .kc, .kd, .kn, .kp, .kr, .kt { color: #5483b8; } // keywords
-  .s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr { color: #6c9a3f; } // strings
-  .n, .na, .nb, .nc, .nd, .ni, .ne, .nf, .nl, .nn, .no, .nt, .nv { color: #3f8fae; } // names/functions
-  .m, .mf, .mh, .mi, .mo, .il { color: #ab4f96; } // numbers
-  .o, .ow { color: #5483b8; } // operators
-  .p { color: #2e3440; } // punctuation
-  .gi { color: #6c9a3f; } // git inserted
-  .gd { color: #d95763; } // git deleted
-  .gh { color: #3f8fae; font-weight: bold; } // git header
-  .cp { color: #c07a3e; } // preprocessor
-  .err { color: #d95763; } // error
-  .w { color: #2e3440; } // whitespace
+  .c, .c1, .cm, .cs { color: #8a8a8a; font-style: italic; } // comments
+  .k, .kc, .kd, .kn, .kp, .kr, .kt { color: #9c4040; } // keywords
+  .s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr { color: #4a6b3a; } // strings
+  .n, .na, .nb, .nc, .nd, .ni, .ne, .nf, .nl, .nn, .no, .nt, .nv { color: #3a5a6b; } // names/functions
+  .m, .mf, .mh, .mi, .mo, .il { color: #8a6a3a; } // numbers
+  .o, .ow { color: #9c4040; } // operators
+  .p { color: #2a2a2a; } // punctuation
+  .gi { color: #4a6b3a; } // git inserted
+  .gd { color: #9c4040; } // git deleted
+  .gh { color: #3a5a6b; font-weight: bold; } // git header
+  .cp { color: #7a5a7a; } // preprocessor
+  .err { color: #c43a3a; } // error
+  .w { color: #2a2a2a; } // whitespace
 }
 
 blockquote {
   font-style: italic;
-  color: #616e88;
-  margin: 0;
-  border: none;
-  padding-left: 1rem;
+  border: thin solid black;
+  padding: 1rem;
 
   p { margin: 0; }
 }

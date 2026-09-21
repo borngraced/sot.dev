@@ -21,7 +21,7 @@ A few things I've worked on:
 I also write about things I learn while building stuff:
 
 * [Everything Should Be Typed](/everything-should-be-typed.html)
-* [cutting a Rust GPUI launcher's idle memory](/cutting-a-Rust-GPUI-launcher-idle-memory.html)
+* [cutting a Rust GPUI launcher's idle memory](/cutting-a-rust-gpui-launcher-idle-memory.html)
 * [Learn the Shape of Your Data](/learn-the-shape-of-your-data.html)
 * [I Forked Helix to Make Agentic Coding Feel Native](/i-forked-helix-to-make-agentic-coding-feel-native.html)
 
